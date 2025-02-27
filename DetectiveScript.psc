@@ -8,12 +8,10 @@ Spell Property _COB_PlacementCooldown Mandatory Const Auto
 ;These just pass the ObjectReference into our quests scripts to do whatever with
 Event OnWorkshopObjectPlaced(ObjectReference akReference)
     CBQ.PlacementHandler(akReference)
-    _COB_PlacementCooldown.Cast(akReference)
 EndEvent
 
 Event OnWorkshopObjectMoved(ObjectReference akReference)
     CBQ.MovementHandler(akReference)
-    _COB_PlacementCooldown.Cast(akReference)
 EndEvent
 
 Event OnWorkshopObjectRemoved(ObjectReference akReference)
@@ -22,4 +20,12 @@ EndEvent
 
 Event OnWorkshopMode(bool aStart)
     CBQ.WorkshopModeHandler(aStart)   
+EndEvent
+
+Event OnObjectRepaired(ObjectReference akReference)
+    Debug.MessageBox("Detected Repair " + akReference)
+    If akReference.HasKeyword(CBQ._COB_Refundable) || akReference.HasKeyword(CBQ._COB_FreeMove)
+        akReference.SetDestroyed(true)
+        Debug.Notification("Destroying " + akReference)
+    EndIf
 EndEvent

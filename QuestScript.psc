@@ -16,6 +16,8 @@ Keyword Property IgnoredByDynamicNavmeshKeyword Mandatory Const Auto
 Keyword Property _COB_Refundable Mandatory Const Auto
 Keyword Property _COB_FreeMove Mandatory Const Auto
 
+ActorValue Property PowerGenerated Auto Const Mandatory
+ActorValue Property PowerRequired Auto Const Mandatory
 ActorValue Property OutpostEventsPackinDummyOnly Auto Const Mandatory
 ActorValue Property WorkshopAutoFoundationMaxHeight Auto Const Mandatory
 
@@ -135,14 +137,13 @@ Function OperationalCosts(ObjectReference akReference)
     EndIf
 EndFunction
 
-Function tallyCost(Int cost, Bool add)
-    If add 
-        totalCost = totalCost + cost
-        Debug.Notification("Adding to cost: " + cost + " credits!")
-    Else
-        totalCost = totalCost - cost
-        Debug.Notification("Subtracting from cost: " + cost + " credits!")
+Function tallyCost(Int cost, String reason)
+    If cost > 0 
+        Debug.Notification(reason + " cost: " + cost + " credits!")
+    ElseIf cost < 0
+        Debug.Notification(reason + ": " + cost + " credits!")
     EndIf
+    totalCost = totalCost + cost
 EndFunction
 
 ;These are called from DetectiveScript 
@@ -151,8 +152,10 @@ Function PlacementHandler(ObjectReference akReference)
     int volume = BoundsChecker(akReference) as Int
     If volume > minVol
         ; Add build cost to Total
-        tallyCost(volume * cost2build, true)
+        tallyCost(volume * cost2build, "Building")
         akReference.AddKeyword(_COB_Refundable)
+        akReference.AddKeyword(_COB_FreeMove)
+        _COB_PlacementCooldown.Cast(akReference)
     EndIf
 EndFunction
 
@@ -161,8 +164,9 @@ Function MovementHandler(ObjectReference akReference)
     int volume = BoundsChecker(akReference) as Int
     If volume > minVol && !akReference.HasKeyword(_COB_FreeMove)
         ; Add move cost to Total
-        tallyCost(volume * cost2move, true)
+        tallyCost(volume * cost2move, "Moving")
         akReference.AddKeyword(_COB_FreeMove)
+        _COB_PlacementCooldown.Cast(akReference)
     EndIf
 EndFunction
 
@@ -172,10 +176,10 @@ Function RemovalHandler(ObjectReference akReference)
     If volume > minVol
         If akReference.HasKeyword(_COB_Refundable)
             ; Subtract build cost from Total
-            tallyCost(volume * cost2build, false)
+            tallyCost(volume * cost2build * -1, "Refunding")
         Else
             ; Add decomm cost to Total
-            tallyCost(volume * cost2decomm, true)
+            tallyCost(volume * cost2decomm, "Teardown")
         EndIf
     EndIf
 EndFunction
@@ -195,8 +199,8 @@ Function WorkshopModeHandler(bool abStart)
     EndIf
 EndFunction
 
-Function TriggerPayment(ObjectReference akTarget)
-    Debug.Notification("Refund Period Expired on " + akTarget)
+Function EndConstruction(ObjectReference akReference)
+    Debug.Notification("Construction finished for " + akReference)
 EndFunction
 
 ;This is my generic startup script, you can do this a hundred different ways. 
